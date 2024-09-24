@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>word-tuah</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div>
+
+        <div class="game-container">
+            <div id="game">
+                <div class="grid" id="grid"></div>
+            </div>
+        </div>
+
+        <div class="keyboard">
+            <div class="row">
+              <div class="key" id="Q">Q</div>
+              <div class="key" id="W">W</div>
+              <div class="key" id="E">E</div>
+              <div class="key" id="R">R</div>
+              <div class="key" id="T">T</div>
+              <div class="key" id="Y">Y</div>
+              <div class="key" id="U">U</div>
+              <div class="key" id="I">I</div>
+              <div class="key" id="O">O</div>
+              <div class="key" id="P">P</div>
+            </div>
+            <div class="row">
+              <div class="key" id="A">A</div>
+              <div class="key" id="S">S</div>
+              <div class="key" id="D">D</div>
+              <div class="key" id="F">F</div>
+              <div class="key" id="G">G</div>
+              <div class="key" id="H">H</div>
+              <div class="key" id="J">J</div>
+              <div class="key" id="K">K</div>
+              <div class="key" id="L">L</div>
+            </div>
+            <div class="row">
+                <div class="key special" data-key="Enter">ENTER</div>
+              <div class="key" id="Z">Z</div>
+              <div class="key" id="X">X</div>
+              <div class="key" id="C">C</div>
+              <div class="key" id="V">V</div>
+              <div class="key" id="B">B</div>
+              <div class="key" id="N">N</div>
+              <div class="key" id="M">M</div>
+              <div class="key special" data-key="Backspace">DELETE</div>
+            </div>
+          </div>
+
+    </div>
+
+    <script>
+        const attempts = 6;
+        let currentAttempt = 0;
+        let currentLetter = 0;
+
+        let winFlag = false;
+
+        let targetWord;
+        pickWord();
+
+        const grid = document.getElementById('grid');
+        for (let i = 0; i < attempts * 5; i++) {
+            const cell = document.createElement('div');
+            cell.className = 'cell';
+            grid.appendChild(cell);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            const key = e.key;
+            if (!winFlag) {
+                if (key === 'Enter') {
+                    submitWord();
+                } else if (key === 'Backspace') {
+                    deleteLetter();
+                } else if (/^[a-zA-Z]$/.test(key)) {
+                    addLetter(key);
+                }
+            }
+        });
+
+        function addLetter(letter) {
+            if (currentLetter < 5) {
+                const cells = document.querySelectorAll('.cell');
+                cells[currentAttempt * 5 + currentLetter].textContent = letter.toUpperCase();
+                currentLetter++;
+            }
+        }
+
+        function deleteLetter() {
+            if (currentLetter > 0) {
+                currentLetter--;
+                const cells = document.querySelectorAll('.cell');
+                cells[currentAttempt * 5 + currentLetter].textContent = '';
+            }
+        }
+
+        function submitWord() {
+            if (currentLetter === 5) {
+                const cells = document.querySelectorAll('.cell');
+                const guess = [];
+                for (let i = 0; i < 5; i++) {
+                    guess.push(cells[currentAttempt * 5 + i].textContent);
+                }
+                validateWord(guess);
+            }
+        }
+
+        function checkWord(guess) {
+            const cells = document.querySelectorAll('.cell');
+            const targetArray = targetWord.toUpperCase().split('');
+            const guessArray = guess.slice();
+
+            winFlag = true;
+
+            // Check for correct letters
+            for (let i = 0; i < 5; i++) {
+                cells[currentAttempt * 5 + i].classList.add("animate", "a" + i);
+                if (guessArray[i] === targetArray[i]) {
+                    cells[currentAttempt * 5 + i].classList.add('correct');
+                    document.getElementById(guessArray[i]).classList.add('correct');
+                    targetArray[i] = null;
+                    guessArray[i] = null;
+                } else {
+                    winFlag = false;
+                }
+            }
+
+            if (winFlag) {
+                alert("Congratulations!");
+                for (let i = 0; i < 5; i++) {
+                    cells[currentAttempt * 5 + i].classList.add("spin", "a" + i);
+                }
+            }
+
+            // Check for present letters
+            for (let i = 0; i < 5; i++) {
+                if (guessArray[i] && targetArray.includes(guessArray[i])) {
+                    cells[currentAttempt * 5 + i].classList.add('present');
+                    document.getElementById(guessArray[i]).classList.add('present');
+                    targetArray[targetArray.indexOf(guessArray[i])] = null;
+                } else if (guessArray[i] && !targetArray.includes(guessArray[i])) {
+                    document.getElementById(guessArray[i]).classList.add('absent');
+                }
+            }
+
+            currentAttempt++;
+        }
+
+        async function validateWord(guess) {
+            let word = "";
+            for (let i = 0; i < 5; i++) {
+                word += guess[i].toLowerCase();
+            }
+            const response = await fetch(`https://api.datamuse.com/words?sp=${word}&max=1`);
+            const data = await response.json();
+            if (data.length > 0 && data[0].word === word) {
+                currentLetter = 0;
+                checkWord(guess);
+            } else {
+                alert("Invalid Word");
+            }
+        }
+
+        function alert(message) {
+            const alertDiv = document.createElement('div');
+            alertDiv.classList.add('alert');
+            alertDiv.innerText = message;
+
+            document.body.appendChild(alertDiv);
+
+            setTimeout(() => {
+                document.body.removeChild(alertDiv);
+            }, 2000);
+        }
+        
+        async function pickWord() {
+            const commonLetters = 'EARIOTNSLCUDPMHGBF';
+
+            const randomLetter = commonLetters[Math.floor(Math.random() * commonLetters.length)];
+
+            const randomPosition = Math.floor(Math.random() * 5);
+
+            const randomNumber = Math.floor(Math.random() * 100);
+
+            let string = "";
+
+            for (let i = 0; i < 5; i++) {
+                if (i == randomPosition) {
+                    string += randomLetter;
+                } else {
+                    string += "?";
+                }
+            }
+
+            console.log(string);
+
+            const response = await fetch(`https://api.datamuse.com/words?sp=${string}&max=100&md=f`);
+            const data = await response.json();
+
+            let chosenWord = data[randomNumber].word;
+            let frequency = parseFloat(data[randomNumber].tags[0].split(':')[1]);
+
+            const regex = /^[A-Za-z]{5}$/;
+
+            console.log(chosenWord);
+            console.log(frequency);
+
+            if (!regex.test(chosenWord) || frequency < 1) {
+                pickWord();
+            } else {
+                console.log("valid");
+            }
+
+            targetWord = chosenWord;
+        }
+
+        document.querySelectorAll('.key').forEach(key => {
+            key.addEventListener('click', () => {
+                const event = new KeyboardEvent('keydown', {
+                    key: key.dataset.key || key.textContent
+                });
+                document.dispatchEvent(event);
+            });
+        });
+
+    </script>
+</body>
+</html>
