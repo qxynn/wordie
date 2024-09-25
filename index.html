@@ -16,7 +16,7 @@
             </div>
         </div>
 
-        <div class="keyboard">
+        <div id="keyboard" class="keyboard">
             <div class="row">
               <div class="key" id="Q">Q</div>
               <div class="key" id="W">W</div>
@@ -62,6 +62,10 @@
 
         let difficulty;
         let id;
+
+        let lostStreak = 0;
+        let streak = localStorage.getItem('streak') || 0;
+        console.log("Current Win Streak: " + streak);
 
         let winFlag = false;
 
@@ -142,11 +146,16 @@
             }
 
             if (winFlag) {
-                alert("Congratulations!", true);
+                streak++;
+                localStorage.setItem('streak', streak);
+                if (streak > 1) {
+                    alert("Congratulations!", streak + " Win Streak 🔥", true);
+                } else {
+                    alert("Congratulations!", null, true);
+                }
                 for (let i = 0; i < 5; i++) {
                     cells[currentAttempt * 5 + i].classList.add("spin", "a" + i);
                 }
-                console.log(printGuesses(guesses));
             }
 
             // Check for present letters
@@ -163,9 +172,14 @@
             }
 
             if (currentAttempt == 5 && !winFlag) {
-                alert("Better Luck Next Time!", true);
+                if (streak > 1) {
+                    alert("Better Luck Next Time!", "The Word Was: " + targetWord, true);
+                    lostStreak = streak;
+                } else {
+                    alert("Better Luck Next Time!", "The Word Was: " + targetWord, true);
+                }
+                localStorage.setItem('streak', 0);
                 winFlag = true;
-                console.log(printGuesses(guesses));
             }
 
             currentAttempt++;
@@ -186,7 +200,7 @@
             }
         }
 
-        function alert(message, copyFlag) {
+        function alert(message, message2, endGame) {
             const alertDiv = document.createElement('div');
             alertDiv.classList.add('alert');
             alertDiv.innerText = message;
@@ -195,10 +209,14 @@
 
             setTimeout(() => {
                 document.body.removeChild(alertDiv);
-                if (copyFlag) {
-                    alert("Score Copied to Clipboard");
+                if (message2) {
+                    alert(message2, null);
                 }
-            }, 2000);
+                if (endGame) {
+                    document.getElementById('keyboard').classList.add('disappear');
+                    makeNextButton();
+                }
+            }, 2500);
         }
         
         async function pickWord() {
@@ -238,7 +256,18 @@
         }
 
         function printGuesses(array) {
-            let string = "wordie\n# " + id + "\n" + (currentAttempt + 1) + " / 6" + "\nDifficulty " + Math.floor(difficulty) + "%\n\n";
+            let string = "wordie\n";
+            string += "# " + id + "\n";
+            string += (currentAttempt) + " / 6\n";
+            string += "Difficulty " + Math.floor(difficulty) + "%\n";
+            if (streak > 1 && lostStreak == 0) {
+                string += streak + " Win Streak 🔥\n\n";
+            } else if (lostStreak > 1) {
+                string += lostStreak + " Win Streak Lost :(\n\n";
+            } else {
+                string += "\n";
+            }
+
             for (let i = 0; i < 6; i++) {
                 if (array[i].length == 5) {
                     for (let n = 0; n < 5; n++) {
@@ -248,13 +277,45 @@
                 }
             }
             navigator.clipboard.writeText(string).then(function() {
-                console.log("Copied text");
+                console.log(string);
+                alert("Score Copied to Clipboard");
             }, function(err) {
                 console.error("Could not copy text: ", err);
             });
             return string;
         }
 
+        function makeNextButton() {
+            const buttonDiv = document.createElement('div');
+            const nextButton = document.createElement('div');
+            const shareButton = document.createElement('div');
+
+            buttonDiv.classList.add('buttonContainer');
+
+            shareButton.classList.add('next');
+            nextButton.classList.add('next');
+
+            nextButton.classList.add('correct');
+            shareButton.classList.add('present');
+
+            nextButton.innerText  = "Next Wordie →";
+            shareButton.innerText = "Share Score ✦";
+
+            nextButton.addEventListener('click', () => {
+                window.location.reload();
+            });
+            shareButton.addEventListener('click', () => {
+                printGuesses(guesses);
+            });
+
+            buttonDiv.appendChild(nextButton);
+            buttonDiv.appendChild(shareButton);
+
+            buttonDiv.classList.add('appear');
+            
+            document.body.appendChild(buttonDiv);
+        }
+        
         document.querySelectorAll('.key').forEach(key => {
             key.addEventListener('click', () => {
                 const event = new KeyboardEvent('keydown', {
